@@ -1,1 +1,1364 @@
-# PE-DSE-tracker
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKDSE PE Student Physical Fitness Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js and Chart.js Annotation Plugin for DSE Threshold lines -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dse: {
+                            star: '#eab308',   // Marks 5 Gold
+                            lv4: '#a855f7',    // Marks 4 Purple
+                            lv3: '#3b82f6',    // Marks 3 Blue
+                            lv2: '#f97316',    // Marks 2 Orange
+                            lv1: '#ef4444',    // Marks 1 Red
+                            sub: '#64748b'     // 0 Marks
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-72 bg-slate-800 border-r border-slate-700/60 flex flex-col justify-between shrink-0">
+        <div>
+            <!-- App Header -->
+            <div class="p-5 border-b border-slate-700/60 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 via-emerald-500 to-indigo-600 flex items-center justify-center text-slate-900 font-extrabold shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-graduation-cap text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base text-white leading-tight">HKDSE PE Tracker</h1>
+                        <p class="text-[11px] text-amber-400 font-medium">Paper 3 Practical Standard</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Selector & Quick Filter -->
+            <div class="p-4 border-b border-slate-700/60 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Students</span>
+                    <button onclick="openModal('addStudentModal')" class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i> New Student
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
+                        <input type="text" id="studentSearchInput" oninput="filterStudentsList()" placeholder="Search name, class..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-900/80 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+                    
+                    <select id="dseLevelFilter" onchange="filterStudentsList()" class="w-full px-2.5 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded-lg text-slate-300 focus:outline-none focus:border-emerald-500">
+                        <option value="ALL">All Marks Levels</option>
+                        <option value="5">5 Marks (Full Marks)</option>
+                        <option value="4">4 Marks & Above</option>
+                        <option value="3">3 Marks & Above</option>
+                        <option value="1-2">1 - 2 Marks</option>
+                    </select>
+                </div>
+
+                <!-- Student List Scroll Area -->
+                <div id="studentListContainer" class="max-h-48 overflow-y-auto space-y-1 pr-1">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-4 space-y-1">
+                <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition">
+                    <i class="fa-solid fa-chart-line w-4 text-center"></i> Performance & DSE Trends
+                </button>
+                <button onclick="switchView('history')" id="nav-history" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-slate-200 transition">
+                    <i class="fa-solid fa-table-list w-4 text-center"></i> Fitness Log Entries
+                </button>
+                <button onclick="openModal('rubricModal')" class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg text-amber-400 hover:bg-amber-500/10 transition">
+                    <i class="fa-solid fa-book-bookmark w-4 text-center"></i> DSE Rubric Standards
+                </button>
+            </nav>
+        </div>
+
+        <div class="p-4 border-t border-slate-700/60 space-y-2">
+            <button onclick="openModal('addRecordModal')" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 transition active:scale-95 text-xs">
+                <i class="fa-solid fa-plus-circle text-sm"></i> Record Fitness Test
+            </button>
+            <button onclick="confirmResetDemo()" class="w-full text-[11px] text-slate-500 hover:text-slate-400 py-1 text-center transition">
+                <i class="fa-solid fa-arrows-rotate"></i> Reset Sample Data
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <!-- Top Sticky Header -->
+        <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sticky top-0 z-10">
+            <div class="flex items-center gap-4">
+                <div id="activeAvatar" class="w-12 h-12 rounded-2xl bg-slate-700 border-2 border-emerald-500 flex items-center justify-center text-lg font-extrabold text-emerald-400 shadow-inner">
+                    --
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 id="activeStudentName" class="text-xl font-bold text-white">Select a Student</h2>
+                        <span id="activeStudentGrade" class="px-2.5 py-0.5 text-xs font-semibold rounded-md bg-slate-700 text-slate-300">Class --</span>
+                        <span id="activeStudentGenderBadge" class="px-2.5 py-0.5 text-xs font-semibold rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">--</span>
+                    </div>
+                    <p id="activeStudentMeta" class="text-xs text-slate-400 mt-0.5">ID: -- | Assessment Count: 0</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Overall DSE Score Card -->
+                <div class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 flex items-center gap-3">
+                    <div class="text-right">
+                        <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Total Fitness Score</span>
+                        <span id="overallDseScore" class="text-xs text-slate-300 font-medium">Avg Mark: -- / 5</span>
+                    </div>
+                    <div id="overallDseBadge" class="px-3 py-1.5 rounded-lg text-sm font-extrabold bg-slate-800 text-slate-400 border border-slate-700">
+                        -- / 20 pts
+                    </div>
+                </div>
+
+                <!-- Compare Toggle & Export & Delete Student -->
+                <div class="flex items-center gap-2">
+                    <button id="viewToggleCompare" onclick="toggleComparisonMode()" class="px-3 py-2 rounded-lg bg-slate-700/60 border border-slate-600 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-users-line"></i> <span id="compareToggleText">vs Class Avg</span>
+                    </button>
+                    <button onclick="exportDataCSV()" title="Export CSV Data" class="p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 border border-slate-600 text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-file-csv text-sm"></i>
+                    </button>
+                    <button onclick="confirmDeleteActiveStudent()" title="Delete Active Student" class="p-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:text-rose-300 transition">
+                        <i class="fa-solid fa-user-xmark text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content View -->
+        <section id="dashboardView" class="p-6 space-y-6 flex-1">
+            
+            <!-- Metric Personal Best Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Card 1: 1609M Endurance Run -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:border-emerald-500/40 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">1609M Run/Walk (PB)</span>
+                            <h3 id="pb1609m" class="text-2xl font-bold text-white mt-1">--:--</h3>
+                        </div>
+                        <div id="badge1609m" class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-700 text-slate-400">
+                            N/A
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-slate-700/50 pt-2 text-slate-400">
+                        <span>Max Benchmark</span>
+                        <span id="mark1609m" class="text-slate-300 font-medium">-- / 5 Marks</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Pull-Ups / Flexed Arm Hang -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:border-cyan-500/40 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span id="cardTitleArm" class="text-xs font-medium text-slate-400 uppercase tracking-wider">Pull-ups (PB)</span>
+                            <h3 id="pbPullUps" class="text-2xl font-bold text-white mt-1">
+                                <span id="pbPullUpsVal">--</span> <span id="cardUnitArm" class="text-xs text-slate-400 font-normal">reps</span>
+                            </h3>
+                        </div>
+                        <div id="badgePullUps" class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-700 text-slate-400">
+                            N/A
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-slate-700/50 pt-2 text-slate-400">
+                        <span>Upper Body Test</span>
+                        <span id="markPullUps" class="text-slate-300 font-medium">-- / 5 Marks</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: 1-Min Sit-Ups -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:border-indigo-500/40 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Sit-ups (PB)</span>
+                            <h3 id="pbSitUps" class="text-2xl font-bold text-white mt-1">-- <span class="text-xs text-slate-400 font-normal">reps</span></h3>
+                        </div>
+                        <div id="badgeSitUps" class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-700 text-slate-400">
+                            N/A
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-slate-700/50 pt-2 text-slate-400">
+                        <span>Abdominal Endurance</span>
+                        <span id="markSitUps" class="text-slate-300 font-medium">-- / 5 Marks</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Sit & Reach -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:border-amber-500/40 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Sit & Reach (PB)</span>
+                            <h3 id="pbSitReach" class="text-2xl font-bold text-white mt-1">-- <span class="text-xs text-slate-400 font-normal">cm</span></h3>
+                        </div>
+                        <div id="badgeSitReach" class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-700 text-slate-400">
+                            N/A
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-slate-700/50 pt-2 text-slate-400">
+                        <span>Flexibility Standard</span>
+                        <span id="markSitReach" class="text-slate-300 font-medium">-- / 5 Marks</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DSE Benchmark Line Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 1609M Chart Card -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-100 text-sm">1609m Run/Walk Trend</h4>
+                            <p class="text-[11px] text-slate-400">Lower duration indicates higher marks</p>
+                        </div>
+                        <div class="flex gap-1.5 text-[10px] font-semibold">
+                            <span class="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">5 Marks Threshold</span>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chart1609m"></canvas>
+                    </div>
+                </div>
+
+                <!-- Pull-Ups Chart Card -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h4 id="chartTitlePullUps" class="font-bold text-slate-100 text-sm">Upper Body Strength (Pull-ups)</h4>
+                            <p class="text-[11px] text-slate-400">Score mapped to HKDSE 1-5 Mark Table</p>
+                        </div>
+                        <div class="flex gap-1.5 text-[10px] font-semibold">
+                            <span class="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">5 Marks Benchmark</span>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chartPullUps"></canvas>
+                    </div>
+                </div>
+
+                <!-- Sit-Ups Chart Card -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-100 text-sm">Sit-ups Progression</h4>
+                            <p class="text-[11px] text-slate-400">Abdominal muscle endurance (reps)</p>
+                        </div>
+                        <div class="flex gap-1.5 text-[10px] font-semibold">
+                            <span class="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">5 Marks Benchmark</span>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chartSitUps"></canvas>
+                    </div>
+                </div>
+
+                <!-- Sit & Reach Chart Card -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-100 text-sm">Sit and Reach Flexibility</h4>
+                            <p class="text-[11px] text-slate-400">Distance reached in centimeters (cm)</p>
+                        </div>
+                        <div class="flex gap-1.5 text-[10px] font-semibold">
+                            <span class="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">5 Marks Benchmark</span>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chartSitReach"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History / Table Log View -->
+        <section id="historyView" class="p-6 space-y-4 hidden flex-1">
+            <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-100">HKDSE Assessment History Log</h3>
+                        <p class="text-xs text-slate-400">Detailed performance records with level breakdown</p>
+                    </div>
+                    <button onclick="openModal('addRecordModal')" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">
+                        <i class="fa-solid fa-plus"></i> Add New Entry
+                    </button>
+                </div>
+
+                <!-- History Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-700">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/90 uppercase text-[10px] font-bold text-slate-400 tracking-wider">
+                            <tr>
+                                <th class="p-3 border-b border-slate-700">Date</th>
+                                <th class="p-3 border-b border-slate-700">1609M Run</th>
+                                <th class="p-3 border-b border-slate-700">Pull-Ups</th>
+                                <th class="p-3 border-b border-slate-700">Sit-Ups</th>
+                                <th class="p-3 border-b border-slate-700">Sit & Reach</th>
+                                <th class="p-3 border-b border-slate-700">DSE Overall</th>
+                                <th class="p-3 border-b border-slate-700">Notes</th>
+                                <th class="p-3 border-b border-slate-700 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-700/50 font-medium">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal 1: Add New Student -->
+    <div id="addStudentModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-base font-bold text-white">Add New HKDSE PE Student</h3>
+                <button onclick="closeModal('addStudentModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="addStudentForm" onsubmit="handleSaveStudent(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
+                    <input type="text" id="studentNameInput" required placeholder="e.g. Alex Wong" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Class / Form</label>
+                        <input type="text" id="studentGradeInput" required placeholder="e.g. 5A / S6" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Gender (DSE Standard)</label>
+                        <select id="studentGenderInput" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                            <option value="Male">Male (Boys Standard)</option>
+                            <option value="Female">Female (Girls Standard)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Student ID / Reg No. (Optional)</label>
+                    <input type="text" id="studentIdInput" placeholder="e.g. HKDSE-2026-012" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('addStudentModal')" class="px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-700 text-xs">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs">Save Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Add Fitness Record -->
+    <div id="addRecordModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white">Record Fitness Assessment</h3>
+                    <p class="text-[11px] text-amber-400 font-medium">Automatic HKDSE Marks calculation enabled</p>
+                </div>
+                <button onclick="closeModal('addRecordModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <form id="addRecordForm" onsubmit="handleSaveRecord(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Assessment Date</label>
+                    <input type="date" id="recordDateInput" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <!-- 1609M Run Input -->
+                <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-700 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider"><i class="fa-solid fa-stopwatch mr-1"></i> 1609m Run/Walk</span>
+                        <span id="liveLevel1609m" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-800 text-slate-400">-- Marks</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400">Minutes (m)</label>
+                            <input type="number" min="0" max="60" id="recordRunMin" oninput="updateLiveDsePreview()" placeholder="6" required class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400">Seconds (s)</label>
+                            <input type="number" min="0" max="59" id="recordRunSec" oninput="updateLiveDsePreview()" placeholder="02" required class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Remaining 3 Tests -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="p-2.5 bg-slate-900/80 rounded-xl border border-slate-700 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <label id="inputLabelArm" class="block text-[11px] font-semibold text-slate-300">Pull-ups</label>
+                            <span id="liveLevelPullUps" class="text-[9px] font-bold text-amber-400">--</span>
+                        </div>
+                        <input type="number" min="0" id="recordPullUps" oninput="updateLiveDsePreview()" placeholder="reps / s" required class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <div class="p-2.5 bg-slate-900/80 rounded-xl border border-slate-700 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-[11px] font-semibold text-slate-300">Sit-ups</label>
+                            <span id="liveLevelSitUps" class="text-[9px] font-bold text-amber-400">--</span>
+                        </div>
+                        <input type="number" min="0" id="recordSitUps" oninput="updateLiveDsePreview()" placeholder="48 reps" required class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <div class="p-2.5 bg-slate-900/80 rounded-xl border border-slate-700 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-[11px] font-semibold text-slate-300">Sit & Reach</label>
+                            <span id="liveLevelSitReach" class="text-[9px] font-bold text-amber-400">--</span>
+                        </div>
+                        <input type="number" step="0.1" id="recordSitReach" oninput="updateLiveDsePreview()" placeholder="44 cm" required class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <!-- Estimated Total Entry Level -->
+                <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
+                    <span class="text-xs text-slate-300 font-semibold">Total Entry Score:</span>
+                    <span id="liveOverallLevel" class="text-xs font-extrabold px-3 py-1 rounded bg-emerald-500 text-slate-950">-- / 20 Marks</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Notes / Field Conditions</label>
+                    <input type="text" id="recordNotes" placeholder="e.g. Weather warm, good effort" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('addRecordModal')" class="px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-700 text-xs">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs">Save Log Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 3: HKDSE Assessment Rubric Guidelines Reference -->
+    <div id="rubricModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-award text-amber-400"></i> HKDSE PE Physical Fitness Scoring Standard
+                    </h3>
+                    <p class="text-xs text-slate-400">Official Physical Fitness Scoring Tables (10. Physical Fitness)</p>
+                </div>
+                <button onclick="closeModal('rubricModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Men Table -->
+                <div>
+                    <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-mars"></i> Men Physical Fitness Standards
+                    </h4>
+                    <div class="overflow-x-auto rounded-xl border border-slate-700">
+                        <table class="w-full text-center text-[12px] text-slate-200">
+                            <thead class="bg-slate-900 text-slate-400 font-bold uppercase text-[11px]">
+                                <tr>
+                                    <th class="p-2.5 border-b border-slate-700">Marks</th>
+                                    <th class="p-2.5 border-b border-slate-700">Sit-ups (reps)</th>
+                                    <th class="p-2.5 border-b border-slate-700">Pull-ups (reps)</th>
+                                    <th class="p-2.5 border-b border-slate-700">Sit and Reach (cm)</th>
+                                    <th class="p-2.5 border-b border-slate-700">1609m Run/Walk (m:s)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700/60 font-medium">
+                                <tr><td class="p-2.5 font-bold text-amber-400 bg-amber-500/10">5</td><td class="p-2.5">48</td><td class="p-2.5">10</td><td class="p-2.5">44</td><td class="p-2.5 font-semibold text-emerald-400">6:02</td></tr>
+                                <tr><td class="p-2.5 font-bold text-purple-400">4</td><td class="p-2.5">44</td><td class="p-2.5">7</td><td class="p-2.5">39</td><td class="p-2.5">6:28</td></tr>
+                                <tr><td class="p-2.5 font-bold text-blue-400">3</td><td class="p-2.5">39</td><td class="p-2.5">3</td><td class="p-2.5">33</td><td class="p-2.5">7:02</td></tr>
+                                <tr><td class="p-2.5 font-bold text-orange-400">2</td><td class="p-2.5">35</td><td class="p-2.5">2</td><td class="p-2.5">26</td><td class="p-2.5">7:40</td></tr>
+                                <tr><td class="p-2.5 font-bold text-red-400">1</td><td class="p-2.5">31</td><td class="p-2.5">1</td><td class="p-2.5">17</td><td class="p-2.5">10:00</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Women Table -->
+                <div>
+                    <h4 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-venus"></i> Women Physical Fitness Standards
+                    </h4>
+                    <div class="overflow-x-auto rounded-xl border border-slate-700">
+                        <table class="w-full text-center text-[12px] text-slate-200">
+                            <thead class="bg-slate-900 text-slate-400 font-bold uppercase text-[11px]">
+                                <tr>
+                                    <th class="p-2.5 border-b border-slate-700">Marks</th>
+                                    <th class="p-2.5 border-b border-slate-700">Sit-ups (reps)</th>
+                                    <th class="p-2.5 border-b border-slate-700">Flexed Arm Hang (s)</th>
+                                    <th class="p-2.5 border-b border-slate-700">Sit and Reach (cm)</th>
+                                    <th class="p-2.5 border-b border-slate-700">1609m Run/Walk (m:s)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700/60 font-medium">
+                                <tr><td class="p-2.5 font-bold text-amber-400 bg-amber-500/10">5</td><td class="p-2.5">46</td><td class="p-2.5">24</td><td class="p-2.5">45</td><td class="p-2.5 font-semibold text-emerald-400">7:25</td></tr>
+                                <tr><td class="p-2.5 font-bold text-purple-400">4</td><td class="p-2.5">42</td><td class="p-2.5">17</td><td class="p-2.5">41</td><td class="p-2.5">7:54</td></tr>
+                                <tr><td class="p-2.5 font-bold text-blue-400">3</td><td class="p-2.5">37</td><td class="p-2.5">8</td><td class="p-2.5">36</td><td class="p-2.5">8:50</td></tr>
+                                <tr><td class="p-2.5 font-bold text-orange-400">2</td><td class="p-2.5">33</td><td class="p-2.5">3</td><td class="p-2.5">31</td><td class="p-2.5">9:40</td></tr>
+                                <tr><td class="p-2.5 font-bold text-red-400">1</td><td class="p-2.5">29</td><td class="p-2.5">1</td><td class="p-2.5">25</td><td class="p-2.5">11:00</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-3">
+                <button onclick="closeModal('rubricModal')" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 font-semibold text-white text-xs rounded-lg">Close Reference</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Dialog Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl text-center">
+            <div id="confirmModalIcon" class="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h4 id="confirmModalTitle" class="text-base font-bold text-white">Confirm Action</h4>
+                <p id="confirmModalMessage" class="text-xs text-slate-400 mt-1">Are you sure you want to proceed?</p>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button id="confirmCancelBtn" onclick="closeModal('confirmModal')" class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold">Cancel</button>
+                <button id="confirmOkBtn" class="flex-1 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Overlay -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 bg-slate-800 border border-slate-700 text-slate-100 text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform transition-all duration-300 translate-y-20 opacity-0 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toastMessage">Notification message</span>
+    </div>
+
+    <script>
+        const STORAGE_KEY_STUDENTS = 'fittracker_dse_students_v3';
+        const STORAGE_KEY_RECORDS = 'fittracker_dse_records_v3';
+
+        let students = [];
+        let records = [];
+        let activeStudentId = null;
+        let isComparisonMode = false;
+        let chartInstances = {};
+
+        // Official HKDSE Standards Mapping
+        const DSE_STANDARDS = {
+            Male: {
+                run1609m: [
+                    { maxSec: 362, mark: 5, label: '5 Marks' }, // 6:02
+                    { maxSec: 388, mark: 4, label: '4 Marks' }, // 6:28
+                    { maxSec: 422, mark: 3, label: '3 Marks' }, // 7:02
+                    { maxSec: 460, mark: 2, label: '2 Marks' }, // 7:40
+                    { maxSec: 600, mark: 1, label: '1 Mark' },  // 10:00
+                    { maxSec: 9999, mark: 0, label: '0 Marks' }
+                ],
+                pullUps: [
+                    { minReps: 10, mark: 5, label: '5 Marks' },
+                    { minReps: 7,  mark: 4, label: '4 Marks' },
+                    { minReps: 3,  mark: 3, label: '3 Marks' },
+                    { minReps: 2,  mark: 2, label: '2 Marks' },
+                    { minReps: 1,  mark: 1, label: '1 Mark' },
+                    { minReps: 0,  mark: 0, label: '0 Marks' }
+                ],
+                sitUps: [
+                    { minReps: 48, mark: 5, label: '5 Marks' },
+                    { minReps: 44, mark: 4, label: '4 Marks' },
+                    { minReps: 39, mark: 3, label: '3 Marks' },
+                    { minReps: 35, mark: 2, label: '2 Marks' },
+                    { minReps: 31, mark: 1, label: '1 Mark' },
+                    { minReps: 0,  mark: 0, label: '0 Marks' }
+                ],
+                sitReach: [
+                    { minCm: 44, mark: 5, label: '5 Marks' },
+                    { minCm: 39, mark: 4, label: '4 Marks' },
+                    { minCm: 33, mark: 3, label: '3 Marks' },
+                    { minCm: 26, mark: 2, label: '2 Marks' },
+                    { minCm: 17, mark: 1, label: '1 Mark' },
+                    { minCm: 0,  mark: 0, label: '0 Marks' }
+                ]
+            },
+            Female: {
+                run1609m: [
+                    { maxSec: 445, mark: 5, label: '5 Marks' }, // 7:25
+                    { maxSec: 474, mark: 4, label: '4 Marks' }, // 7:54
+                    { maxSec: 530, mark: 3, label: '3 Marks' }, // 8:50
+                    { maxSec: 580, mark: 2, label: '2 Marks' }, // 9:40
+                    { maxSec: 660, mark: 1, label: '1 Mark' },  // 11:00
+                    { maxSec: 9999, mark: 0, label: '0 Marks' }
+                ],
+                pullUps: [ // Flexed Arm Hang (seconds)
+                    { minReps: 24, mark: 5, label: '5 Marks' },
+                    { minReps: 17, mark: 4, label: '4 Marks' },
+                    { minReps: 8,  mark: 3, label: '3 Marks' },
+                    { minReps: 3,  mark: 2, label: '2 Marks' },
+                    { minReps: 1,  mark: 1, label: '1 Mark' },
+                    { minReps: 0,  mark: 0, label: '0 Marks' }
+                ],
+                sitUps: [
+                    { minReps: 46, mark: 5, label: '5 Marks' },
+                    { minReps: 42, mark: 4, label: '4 Marks' },
+                    { minReps: 37, mark: 3, label: '3 Marks' },
+                    { minReps: 33, mark: 2, label: '2 Marks' },
+                    { minReps: 29, mark: 1, label: '1 Mark' },
+                    { minReps: 0,  mark: 0, label: '0 Marks' }
+                ],
+                sitReach: [
+                    { minCm: 45, mark: 5, label: '5 Marks' },
+                    { minCm: 41, mark: 4, label: '4 Marks' },
+                    { minCm: 36, mark: 3, label: '3 Marks' },
+                    { minCm: 31, mark: 2, label: '2 Marks' },
+                    { minCm: 25, mark: 1, label: '1 Mark' },
+                    { minCm: 0,  mark: 0, label: '0 Marks' }
+                ]
+            }
+        };
+
+        // Seed Sample Students
+        const seedStudents = [
+            { id: 'S101', name: 'Lucas Cheung', grade: 'Class 6A', gender: 'Male' },
+            { id: 'S102', name: 'Kelly Ho', grade: 'Class 6A', gender: 'Female' },
+            { id: 'S103', name: 'Anson Chan', grade: 'Class 5B', gender: 'Male' }
+        ];
+
+        // Seed Sample Logs
+        const seedRecords = [
+            { id: 'R1', studentId: 'S101', date: '2026-02-10', runMin: 6, runSec: 40, pullUps: 7, sitUps: 40, sitReach: 35.0, notes: 'Term 1 Practice' },
+            { id: 'R2', studentId: 'S101', date: '2026-05-15', runMin: 6, runSec: 20, pullUps: 8, sitUps: 45, sitReach: 40.0, notes: 'Mid-term Assessment' },
+            { id: 'R3', studentId: 'S101', date: '2026-09-28', runMin: 5, runSec: 58, pullUps: 10, sitUps: 49, sitReach: 45.0, notes: 'Peak Mock Standard' },
+
+            { id: 'R4', studentId: 'S102', date: '2026-02-10', runMin: 8, runSec: 10, pullUps: 10, sitUps: 35, sitReach: 32.0, notes: 'Initial Assessment' },
+            { id: 'R5', studentId: 'S102', date: '2026-09-28', runMin: 7, runSec: 20, pullUps: 25, sitUps: 47, sitReach: 46.0, notes: 'Pre-exam test' }
+        ];
+
+        window.onload = function() {
+            loadStorageData();
+            if (students.length > 0) activeStudentId = students[0].id;
+            filterStudentsList();
+            renderDashboard();
+            const dateInput = document.getElementById('recordDateInput');
+            if (dateInput) dateInput.valueAsDate = new Date();
+        };
+
+        function loadStorageData() {
+            try {
+                const s = localStorage.getItem(STORAGE_KEY_STUDENTS);
+                const r = localStorage.getItem(STORAGE_KEY_RECORDS);
+                if (s && r) {
+                    students = JSON.parse(s);
+                    records = JSON.parse(r);
+                } else {
+                    students = [...seedStudents];
+                    records = [...seedRecords];
+                    saveToStorage();
+                }
+            } catch(e) {
+                students = [...seedStudents];
+                records = [...seedRecords];
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
+            localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records));
+        }
+
+        function getStudentRecords(studentId) {
+            return records
+                .filter(r => r.studentId === studentId)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        function getDseItemLevel(gender, itemKey, rawVal) {
+            const stds = DSE_STANDARDS[gender || 'Male'][itemKey];
+            if (!stds) return { mark: 0, label: '0 Marks' };
+
+            if (itemKey === 'run1609m') {
+                const totalSec = typeof rawVal === 'number' ? rawVal : (rawVal.runMin * 60 + rawVal.runSec);
+                for (let match of stds) {
+                    if (totalSec <= match.maxSec) return match;
+                }
+            } else if (itemKey === 'sitReach') {
+                for (let match of stds) {
+                    if (rawVal >= match.minCm) return match;
+                }
+            } else {
+                for (let match of stds) {
+                    if (rawVal >= match.minReps) return match;
+                }
+            }
+            return { mark: 0, label: '0 Marks' };
+        }
+
+        function getDseBadgeStyle(mark) {
+            switch(mark) {
+                case 5: return 'bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20';
+                case 4: return 'bg-purple-500 text-white';
+                case 3: return 'bg-blue-500 text-white';
+                case 2: return 'bg-orange-500 text-white';
+                case 1: return 'bg-red-500 text-white';
+                default: return 'bg-slate-700 text-slate-300';
+            }
+        }
+
+        function filterStudentsList() {
+            const searchEl = document.getElementById('studentSearchInput');
+            const query = searchEl ? searchEl.value.toLowerCase() : '';
+            
+            const filterEl = document.getElementById('dseLevelFilter');
+            const dseFilter = filterEl ? filterEl.value : 'ALL';
+
+            const container = document.getElementById('studentListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const filtered = students.filter(s => {
+                const matchesText = s.name.toLowerCase().includes(query) || s.grade.toLowerCase().includes(query);
+                
+                if (!matchesText) return false;
+                if (dseFilter === 'ALL') return true;
+
+                const studentRecs = getStudentRecords(s.id);
+                if (studentRecs.length === 0) return false;
+                const latest = studentRecs[studentRecs.length - 1];
+                const r1 = getDseItemLevel(s.gender, 'run1609m', latest);
+                const r2 = getDseItemLevel(s.gender, 'pullUps', latest.pullUps);
+                const r3 = getDseItemLevel(s.gender, 'sitUps', latest.sitUps);
+                const r4 = getDseItemLevel(s.gender, 'sitReach', latest.sitReach);
+                const avgMark = Math.round((r1.mark + r2.mark + r3.mark + r4.mark) / 4);
+
+                if (dseFilter === '5') return avgMark === 5;
+                if (dseFilter === '4') return avgMark >= 4;
+                if (dseFilter === '3') return avgMark >= 3;
+                if (dseFilter === '1-2') return avgMark >= 1 && avgMark <= 2;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 p-2">No matching students.</p>`;
+                return;
+            }
+
+            filtered.forEach(s => {
+                const isActive = s.id === activeStudentId;
+                const btn = document.createElement('div');
+                btn.className = `w-full px-3 py-2 rounded-lg text-xs flex items-center justify-between transition group ${
+                    isActive ? 'bg-slate-700 text-emerald-400 font-semibold border border-slate-600' : 'text-slate-300 hover:bg-slate-800'
+                }`;
+                btn.innerHTML = `
+                    <div onclick="selectStudent('${s.id}')" class="truncate flex-1 cursor-pointer">
+                        <div class="truncate text-slate-100 font-medium">${s.name}</div>
+                        <div class="text-[10px] text-slate-400">${s.grade} • ${s.gender}</div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="event.stopPropagation(); confirmDeleteStudentById('${s.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-400 p-1 transition" title="Delete Student">
+                            <i class="fa-solid fa-trash-can text-[11px]"></i>
+                        </button>
+                        ${isActive ? '<i class="fa-solid fa-chevron-right text-xs"></i>' : ''}
+                    </div>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function renderStudentList() { filterStudentsList(); }
+
+        function selectStudent(id) {
+            activeStudentId = id;
+            filterStudentsList();
+            renderDashboard();
+        }
+
+        function renderActiveStudentHeader() {
+            const student = students.find(s => s.id === activeStudentId);
+            if (!student) return;
+
+            const initials = student.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+            const avatarEl = document.getElementById('activeAvatar');
+            if (avatarEl) avatarEl.innerText = initials;
+            
+            const nameEl = document.getElementById('activeStudentName');
+            if (nameEl) nameEl.innerText = student.name;
+            
+            const gradeEl = document.getElementById('activeStudentGrade');
+            if (gradeEl) gradeEl.innerText = student.grade;
+            
+            const genderEl = document.getElementById('activeStudentGenderBadge');
+            if (genderEl) genderEl.innerText = student.gender;
+
+            const isFemale = student.gender === 'Female';
+            
+            const cardTitleArm = document.getElementById('cardTitleArm');
+            if (cardTitleArm) cardTitleArm.innerText = isFemale ? 'Flexed Arm Hang (PB)' : 'Pull-ups (PB)';
+            
+            const cardUnitArm = document.getElementById('cardUnitArm');
+            if (cardUnitArm) cardUnitArm.innerText = isFemale ? 'sec' : 'reps';
+            
+            const chartTitlePullUps = document.getElementById('chartTitlePullUps');
+            if (chartTitlePullUps) chartTitlePullUps.innerText = isFemale ? 'Flexed Arm Hang (s)' : 'Upper Body Strength (Pull-ups)';
+            
+            const inputLabelArm = document.getElementById('inputLabelArm');
+            if (inputLabelArm) inputLabelArm.innerText = isFemale ? 'Flexed Arm (s)' : 'Pull-ups';
+
+            const studentRecs = getStudentRecords(student.id);
+            const metaEl = document.getElementById('activeStudentMeta');
+            if (metaEl) metaEl.innerText = `ID: ${student.id} | ${studentRecs.length} Test Entries`;
+
+            if (studentRecs.length > 0) {
+                const latest = studentRecs[studentRecs.length - 1];
+                const r1 = getDseItemLevel(student.gender, 'run1609m', latest);
+                const r2 = getDseItemLevel(student.gender, 'pullUps', latest.pullUps);
+                const r3 = getDseItemLevel(student.gender, 'sitUps', latest.sitUps);
+                const r4 = getDseItemLevel(student.gender, 'sitReach', latest.sitReach);
+
+                const totalScore = r1.mark + r2.mark + r3.mark + r4.mark;
+                const avgMark = (totalScore / 4).toFixed(1);
+
+                const overallScoreEl = document.getElementById('overallDseScore');
+                if (overallScoreEl) overallScoreEl.innerText = `Avg Mark: ${avgMark} / 5`;
+                
+                const badge = document.getElementById('overallDseBadge');
+                if (badge) {
+                    badge.innerText = `${totalScore} / 20 Marks`;
+                    badge.className = `px-3 py-1.5 rounded-lg text-xs font-extrabold ${getDseBadgeStyle(Math.round(totalScore/4))}`;
+                }
+            } else {
+                const overallScoreEl = document.getElementById('overallDseScore');
+                if (overallScoreEl) overallScoreEl.innerText = `Avg Mark: -- / 5`;
+                
+                const badge = document.getElementById('overallDseBadge');
+                if (badge) badge.innerText = '-- / 20 Marks';
+            }
+        }
+
+        function renderPersonalBestsAndDseBadges() {
+            const student = students.find(s => s.id === activeStudentId);
+            const studentRecs = getStudentRecords(activeStudentId);
+
+            if (!student || studentRecs.length === 0) {
+                const pbRun = document.getElementById('pb1609m');
+                if (pbRun) pbRun.innerText = '--:--';
+                const pbPull = document.getElementById('pbPullUpsVal');
+                if (pbPull) pbPull.innerText = '--';
+                const pbSit = document.getElementById('pbSitUps');
+                if (pbSit) pbSit.innerHTML = '-- <span class="text-xs text-slate-400 font-normal">reps</span>';
+                const pbReach = document.getElementById('pbSitReach');
+                if (pbReach) pbReach.innerHTML = '-- <span class="text-xs text-slate-400 font-normal">cm</span>';
+
+                ['1609m','PullUps','SitUps','SitReach'].forEach(item => {
+                    const badgeEl = document.getElementById(`badge${item}`);
+                    if (badgeEl) badgeEl.innerText = 'N/A';
+                    const markEl = document.getElementById(`mark${item}`);
+                    if (markEl) markEl.innerText = '-- / 5 Marks';
+                });
+                return;
+            }
+
+            const isFemale = student.gender === 'Female';
+
+            // 1609M Best
+            const minSecs = Math.min(...studentRecs.map(r => (r.runMin * 60) + r.runSec));
+            const bestRunMin = Math.floor(minSecs / 60);
+            const bestRunSec = minSecs % 60;
+            const runMatch = getDseItemLevel(student.gender, 'run1609m', minSecs);
+
+            const pb1609m = document.getElementById('pb1609m');
+            if (pb1609m) pb1609m.innerText = `${bestRunMin}:${bestRunSec < 10 ? '0' : ''}${bestRunSec}`;
+            
+            const badge1609m = document.getElementById('badge1609m');
+            if (badge1609m) {
+                badge1609m.innerText = `${runMatch.mark} Marks`;
+                badge1609m.className = `px-2.5 py-1 rounded-lg text-xs font-extrabold ${getDseBadgeStyle(runMatch.mark)}`;
+            }
+            const mark1609m = document.getElementById('mark1609m');
+            if (mark1609m) mark1609m.innerText = `${runMatch.mark} / 5 Marks`;
+
+            // Upper body arm test Best
+            const maxPull = Math.max(...studentRecs.map(r => r.pullUps));
+            const pullMatch = getDseItemLevel(student.gender, 'pullUps', maxPull);
+            
+            const pbPullUpsVal = document.getElementById('pbPullUpsVal');
+            if (pbPullUpsVal) {
+                pbPullUpsVal.innerText = maxPull;
+            }
+            const cardUnitArm = document.getElementById('cardUnitArm');
+            if (cardUnitArm) {
+                cardUnitArm.innerText = isFemale ? 'sec' : 'reps';
+            }
+
+            const badgePullUps = document.getElementById('badgePullUps');
+            if (badgePullUps) {
+                badgePullUps.innerText = `${pullMatch.mark} Marks`;
+                badgePullUps.className = `px-2.5 py-1 rounded-lg text-xs font-extrabold ${getDseBadgeStyle(pullMatch.mark)}`;
+            }
+            const markPullUps = document.getElementById('markPullUps');
+            if (markPullUps) markPullUps.innerText = `${pullMatch.mark} / 5 Marks`;
+
+            // Sit-Ups Best
+            const maxSit = Math.max(...studentRecs.map(r => r.sitUps));
+            const sitMatch = getDseItemLevel(student.gender, 'sitUps', maxSit);
+            const pbSitUps = document.getElementById('pbSitUps');
+            if (pbSitUps) pbSitUps.innerHTML = `${maxSit} <span class="text-xs text-slate-400 font-normal">reps</span>`;
+            
+            const badgeSitUps = document.getElementById('badgeSitUps');
+            if (badgeSitUps) {
+                badgeSitUps.innerText = `${sitMatch.mark} Marks`;
+                badgeSitUps.className = `px-2.5 py-1 rounded-lg text-xs font-extrabold ${getDseBadgeStyle(sitMatch.mark)}`;
+            }
+            const markSitUps = document.getElementById('markSitUps');
+            if (markSitUps) markSitUps.innerText = `${sitMatch.mark} / 5 Marks`;
+
+            // Sit & Reach Best
+            const maxReach = Math.max(...studentRecs.map(r => r.sitReach));
+            const reachMatch = getDseItemLevel(student.gender, 'sitReach', maxReach);
+            const pbSitReach = document.getElementById('pbSitReach');
+            if (pbSitReach) pbSitReach.innerHTML = `${maxReach.toFixed(1)} <span class="text-xs text-slate-400 font-normal">cm</span>`;
+            
+            const badgeSitReach = document.getElementById('badgeSitReach');
+            if (badgeSitReach) {
+                badgeSitReach.innerText = `${reachMatch.mark} Marks`;
+                badgeSitReach.className = `px-2.5 py-1 rounded-lg text-xs font-extrabold ${getDseBadgeStyle(reachMatch.mark)}`;
+            }
+            const markSitReach = document.getElementById('markSitReach');
+            if (markSitReach) markSitReach.innerText = `${reachMatch.mark} / 5 Marks`;
+        }
+
+        function renderDashboard() {
+            renderActiveStudentHeader();
+            renderPersonalBestsAndDseBadges();
+            renderCharts();
+            renderHistoryTable();
+        }
+
+        function createLineChart(canvasId, labels, datasets, mark5Value, isTimeFormat) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+
+            const annotations = {};
+            if (mark5Value !== undefined) {
+                annotations.lineMark5 = {
+                    type: 'line',
+                    yMin: mark5Value,
+                    yMax: mark5Value,
+                    borderColor: 'rgba(234, 179, 8, 0.7)',
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    label: {
+                        display: true,
+                        content: '5 Marks Benchmark',
+                        color: '#eab308',
+                        position: 'start',
+                        font: { size: 10, weight: 'bold' },
+                        backgroundColor: 'rgba(15, 23, 42, 0.85)'
+                    }
+                };
+            }
+
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.length ? labels : ['No Data'],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (isTimeFormat && context.parsed.y !== null) {
+                                        const m = Math.floor(context.parsed.y / 60);
+                                        const s = Math.round(context.parsed.y % 60);
+                                        return label + `${m}m ${s < 10 ? '0' : ''}${s}s`;
+                                    }
+                                    return label + context.parsed.y;
+                                }
+                            }
+                        },
+                        annotation: { annotations: annotations }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', font: { size: 10 } },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    if (isTimeFormat) {
+                                        const m = Math.floor(value / 60);
+                                        const s = Math.round(value % 60);
+                                        return `${m}:${s < 10 ? '0' : ''}${s}`;
+                                    }
+                                    return value;
+                                }
+                            },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            reverse: isTimeFormat
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCharts() {
+            const activeStudent = students.find(s => s.id === activeStudentId);
+            const studentRecs = getStudentRecords(activeStudentId);
+
+            const dates = studentRecs.map(r => r.date);
+            const runData = studentRecs.map(r => (r.runMin * 60) + r.runSec);
+            const pullData = studentRecs.map(r => r.pullUps);
+            const sitData = studentRecs.map(r => r.sitUps);
+            const reachData = studentRecs.map(r => r.sitReach);
+
+            let avgRun = [], avgPull = [], avgSit = [], avgReach = [];
+            if (isComparisonMode) {
+                dates.forEach(d => {
+                    const recs = records.filter(r => r.date === d);
+                    avgRun.push(recs.reduce((a,c) => a + (c.runMin*60 + c.runSec), 0) / recs.length);
+                    avgPull.push(recs.reduce((a,c) => a + c.pullUps, 0) / recs.length);
+                    avgSit.push(recs.reduce((a,c) => a + c.sitUps, 0) / recs.length);
+                    avgReach.push(recs.reduce((a,c) => a + c.sitReach, 0) / recs.length);
+                });
+            }
+
+            const gender = activeStudent ? activeStudent.gender : 'Male';
+
+            const run5Sec = DSE_STANDARDS[gender].run1609m.find(m => m.mark === 5).maxSec;
+            createLineChart('chart1609m', dates, [
+                { label: `${activeStudent ? activeStudent.name : 'Student'} (sec)`, data: runData, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.3 },
+                ...(isComparisonMode ? [{ label: 'Class Average', data: avgRun, borderColor: '#94a3b8', borderDash: [5,5], fill: false }] : [])
+            ], run5Sec, true);
+
+            const pull5 = DSE_STANDARDS[gender].pullUps.find(m => m.mark === 5).minReps;
+            createLineChart('chartPullUps', dates, [
+                { label: `${activeStudent ? activeStudent.name : 'Student'} (${gender === 'Female' ? 's' : 'reps'})`, data: pullData, borderColor: '#06b6d4', backgroundColor: 'rgba(6, 182, 212, 0.1)', fill: true, tension: 0.3 },
+                ...(isComparisonMode ? [{ label: 'Class Average', data: avgPull, borderColor: '#94a3b8', borderDash: [5,5], fill: false }] : [])
+            ], pull5, false);
+
+            const sit5 = DSE_STANDARDS[gender].sitUps.find(m => m.mark === 5).minReps;
+            createLineChart('chartSitUps', dates, [
+                { label: `${activeStudent ? activeStudent.name : 'Student'} (reps)`, data: sitData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', fill: true, tension: 0.3 },
+                ...(isComparisonMode ? [{ label: 'Class Average', data: avgSit, borderColor: '#94a3b8', borderDash: [5,5], fill: false }] : [])
+            ], sit5, false);
+
+            const reach5 = DSE_STANDARDS[gender].sitReach.find(m => m.mark === 5).minCm;
+            createLineChart('chartSitReach', dates, [
+                { label: `${activeStudent ? activeStudent.name : 'Student'} (cm)`, data: reachData, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', fill: true, tension: 0.3 },
+                ...(isComparisonMode ? [{ label: 'Class Average', data: avgReach, borderColor: '#94a3b8', borderDash: [5,5], fill: false }] : [])
+            ], reach5, false);
+        }
+
+        function updateLiveDsePreview() {
+            const student = students.find(s => s.id === activeStudentId);
+            const gender = student ? student.gender : 'Male';
+
+            const runMin = parseInt(document.getElementById('recordRunMin').value) || 0;
+            const runSec = parseInt(document.getElementById('recordRunSec').value) || 0;
+            const pullUps = parseInt(document.getElementById('recordPullUps').value) || 0;
+            const sitUps = parseInt(document.getElementById('recordSitUps').value) || 0;
+            const sitReach = parseFloat(document.getElementById('recordSitReach').value) || 0;
+
+            const r1 = getDseItemLevel(gender, 'run1609m', (runMin * 60) + runSec);
+            const r2 = getDseItemLevel(gender, 'pullUps', pullUps);
+            const r3 = getDseItemLevel(gender, 'sitUps', sitUps);
+            const r4 = getDseItemLevel(gender, 'sitReach', sitReach);
+
+            const l1 = document.getElementById('liveLevel1609m');
+            if (l1) l1.innerText = `${r1.mark} Marks`;
+            const l2 = document.getElementById('liveLevelPullUps');
+            if (l2) l2.innerText = `${r2.mark} Marks`;
+            const l3 = document.getElementById('liveLevelSitUps');
+            if (l3) l3.innerText = `${r3.mark} Marks`;
+            const l4 = document.getElementById('liveLevelSitReach');
+            if (l4) l4.innerText = `${r4.mark} Marks`;
+
+            const totalScore = r1.mark + r2.mark + r3.mark + r4.mark;
+            const lo = document.getElementById('liveOverallLevel');
+            if (lo) lo.innerText = `${totalScore} / 20 Marks (${(totalScore/4).toFixed(1)} Avg)`;
+        }
+
+        function renderHistoryTable() {
+            const body = document.getElementById('historyTableBody');
+            if (!body) return;
+            body.innerHTML = '';
+
+            const student = students.find(s => s.id === activeStudentId);
+            const studentRecs = getStudentRecords(activeStudentId);
+
+            if (!student || studentRecs.length === 0) {
+                body.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">No fitness entries recorded yet for this student.</td></tr>`;
+                return;
+            }
+
+            studentRecs.forEach(r => {
+                const r1 = getDseItemLevel(student.gender, 'run1609m', r);
+                const r2 = getDseItemLevel(student.gender, 'pullUps', r.pullUps);
+                const r3 = getDseItemLevel(student.gender, 'sitUps', r.sitUps);
+                const r4 = getDseItemLevel(student.gender, 'sitReach', r.sitReach);
+                const totalScore = r1.mark + r2.mark + r3.mark + r4.mark;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-200">${r.date}</td>
+                    <td class="p-3"><span class="text-emerald-400 font-bold">${r.runMin}m ${r.runSec < 10 ? '0' : ''}${r.runSec}s</span> <span class="text-[10px] text-slate-400">(${r1.mark} Marks)</span></td>
+                    <td class="p-3">${r.pullUps} ${student.gender === 'Female' ? 's' : 'reps'} <span class="text-[10px] text-slate-400">(${r2.mark} Marks)</span></td>
+                    <td class="p-3">${r.sitUps} reps <span class="text-[10px] text-slate-400">(${r3.mark} Marks)</span></td>
+                    <td class="p-3">${r.sitReach} cm <span class="text-[10px] text-slate-400">(${r4.mark} Marks)</span></td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${getDseBadgeStyle(Math.round(totalScore/4))}">${totalScore} / 20 Marks</span></td>
+                    <td class="p-3 text-[11px] text-slate-400 max-w-xs truncate">${r.notes || '-'}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="confirmDeleteRecord('${r.id}')" class="text-rose-400 hover:text-rose-300 p-1 transition" title="Delete Entry"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function switchView(viewName) {
+            const dash = document.getElementById('dashboardView');
+            const hist = document.getElementById('historyView');
+            const navDash = document.getElementById('nav-dashboard');
+            const navHist = document.getElementById('nav-history');
+
+            if (!dash || !hist) return;
+
+            if (viewName === 'dashboard') {
+                dash.classList.remove('hidden');
+                hist.classList.add('hidden');
+                if (navDash) navDash.className = "nav-btn w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition";
+                if (navHist) navHist.className = "nav-btn w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-slate-200 transition";
+            } else {
+                dash.classList.add('hidden');
+                hist.classList.remove('hidden');
+                if (navHist) navHist.className = "nav-btn w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition";
+                if (navDash) navDash.className = "nav-btn w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-slate-200 transition";
+                renderHistoryTable();
+            }
+        }
+
+        function toggleComparisonMode() {
+            isComparisonMode = !isComparisonMode;
+            const btnText = document.getElementById('compareToggleText');
+            const btn = document.getElementById('viewToggleCompare');
+            if (isComparisonMode) {
+                if (btnText) btnText.innerText = "Comparing (Class Avg)";
+                if (btn) btn.classList.add('bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/40');
+            } else {
+                if (btnText) btnText.innerText = "vs Class Avg";
+                if (btn) btn.classList.remove('bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/40');
+            }
+            renderCharts();
+        }
+
+        function openModal(id) { 
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('hidden'); 
+        }
+
+        function closeModal(id) { 
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden'); 
+        }
+
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toastNotification');
+            const msgEl = document.getElementById('toastMessage');
+            const icon = document.getElementById('toastIcon');
+
+            if (!toast || !msgEl || !icon) return;
+
+            msgEl.innerText = message;
+            icon.className = isSuccess 
+                ? "fa-solid fa-circle-check text-emerald-400 text-base"
+                : "fa-solid fa-circle-exclamation text-amber-400 text-base";
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function handleSaveStudent(e) {
+            e.preventDefault();
+            const newS = {
+                id: document.getElementById('studentIdInput').value || 'STU-' + Date.now().toString().slice(-4),
+                name: document.getElementById('studentNameInput').value,
+                grade: document.getElementById('studentGradeInput').value,
+                gender: document.getElementById('studentGenderInput').value
+            };
+            students.push(newS);
+            saveToStorage();
+            activeStudentId = newS.id;
+            filterStudentsList();
+            renderDashboard();
+            closeModal('addStudentModal');
+            document.getElementById('addStudentForm').reset();
+            showToast(`Student "${newS.name}" created successfully!`);
+        }
+
+        function handleSaveRecord(e) {
+            e.preventDefault();
+            if (!activeStudentId) {
+                showToast('Please select or create a student first.', false);
+                return;
+            }
+
+            const newR = {
+                id: 'REC-' + Date.now(),
+                studentId: activeStudentId,
+                date: document.getElementById('recordDateInput').value,
+                runMin: parseInt(document.getElementById('recordRunMin').value) || 0,
+                runSec: parseInt(document.getElementById('recordRunSec').value) || 0,
+                pullUps: parseInt(document.getElementById('recordPullUps').value) || 0,
+                sitUps: parseInt(document.getElementById('recordSitUps').value) || 0,
+                sitReach: parseFloat(document.getElementById('recordSitReach').value) || 0,
+                notes: document.getElementById('recordNotes').value
+            };
+
+            records.push(newR);
+            saveToStorage();
+            renderDashboard();
+            closeModal('addRecordModal');
+            document.getElementById('addRecordForm').reset();
+            const dateInput = document.getElementById('recordDateInput');
+            if (dateInput) dateInput.valueAsDate = new Date();
+            showToast('Fitness assessment record saved!');
+        }
+
+        function confirmResetDemo() {
+            document.getElementById('confirmModalTitle').innerText = "Reset Sample Data";
+            document.getElementById('confirmModalMessage').innerText = "Reset all students and fitness records to default demo data?";
+            const okBtn = document.getElementById('confirmOkBtn');
+            okBtn.onclick = function() {
+                students = [...seedStudents];
+                records = [...seedRecords];
+                saveToStorage();
+                if (students.length > 0) activeStudentId = students[0].id;
+                filterStudentsList();
+                renderDashboard();
+                closeModal('confirmModal');
+                showToast('Sample data reset successfully!');
+            };
+            openModal('confirmModal');
+        }
+
+        function confirmDeleteRecord(id) {
+            document.getElementById('confirmModalTitle').innerText = "Delete Record";
+            document.getElementById('confirmModalMessage').innerText = "Are you sure you want to delete this assessment entry?";
+            const okBtn = document.getElementById('confirmOkBtn');
+            okBtn.onclick = function() {
+                records = records.filter(r => r.id !== id);
+                saveToStorage();
+                renderDashboard();
+                closeModal('confirmModal');
+                showToast('Assessment record deleted.');
+            };
+            openModal('confirmModal');
+        }
+
+        function confirmDeleteActiveStudent() {
+            if (!activeStudentId) return;
+            confirmDeleteStudentById(activeStudentId);
+        }
+
+        function confirmDeleteStudentById(studentId) {
+            const student = students.find(s => s.id === studentId);
+            if (!student) return;
+
+            document.getElementById('confirmModalTitle').innerText = "Delete Student Profile";
+            document.getElementById('confirmModalMessage').innerText = `Are you sure you want to delete ${student.name}? All associated fitness logs will also be permanently removed.`;
+            const okBtn = document.getElementById('confirmOkBtn');
+            okBtn.onclick = function() {
+                // Remove student
+                students = students.filter(s => s.id !== studentId);
+                // Remove records belonging to this student
+                records = records.filter(r => r.studentId !== studentId);
+                saveToStorage();
+
+                // Select another student if available
+                if (students.length > 0) {
+                    activeStudentId = students[0].id;
+                } else {
+                    activeStudentId = null;
+                }
+
+                filterStudentsList();
+                renderDashboard();
+                closeModal('confirmModal');
+                showToast(`Student "${student.name}" deleted.`);
+            };
+            openModal('confirmModal');
+        }
+
+        function exportDataCSV() {
+            const student = students.find(s => s.id === activeStudentId);
+            const studentRecs = getStudentRecords(activeStudentId);
+
+            if (studentRecs.length === 0) {
+                showToast('No assessment data available to export.', false);
+                return;
+            }
+
+            let csv = "data:text/csv;charset=utf-8,";
+            csv += `HKDSE PE Fitness Report,${student ? student.name : ''}\n`;
+            csv += `Class,${student ? student.grade : ''},Gender,${student ? student.gender : ''}\n\n`;
+            csv += "Date,1609M Run,1609M Marks,Pull-Ups,Pull-Ups Marks,Sit-Ups,Sit-Ups Marks,Sit & Reach (cm),Reach Marks,Total DSE Score\n";
+
+            studentRecs.forEach(r => {
+                const r1 = getDseItemLevel(student.gender, 'run1609m', r);
+                const r2 = getDseItemLevel(student.gender, 'pullUps', r.pullUps);
+                const r3 = getDseItemLevel(student.gender, 'sitUps', r.sitUps);
+                const r4 = getDseItemLevel(student.gender, 'sitReach', r.sitReach);
+                const totalScore = r1.mark + r2.mark + r3.mark + r4.mark;
+
+                csv += `${r.date},${r.runMin}m ${r.runSec}s,${r1.mark},${r.pullUps},${r2.mark},${r.sitUps},${r3.mark},${r.sitReach},${r4.mark},${totalScore}/20\n`;
+            });
+
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csv));
+            link.setAttribute("download", `${student ? student.name.replace(/\s+/g,'_') : 'Student'}_HKDSE_Fitness.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('CSV export downloaded!');
+        }
+    </script>
+</body>
+</html>
